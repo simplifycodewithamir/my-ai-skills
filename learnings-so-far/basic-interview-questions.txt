@@ -1,0 +1,50 @@
+NET Interview Revision
+Let's play a quick game.
+Can you answer these without opening Google?
+If yes, you're probably interview-ready.
+If not, you know what to revise tonight.
+👇
+🧠 C#
+✔ Why are strings immutable?
+✔ When would you use record instead of class?
+✔ Why is Span<T> faster in some scenarios?
+✔ What problem does ValueTask solve?
+🌐 ASP.NET Core
+✔ Why is DbContext registered as Scoped?
+✔ Why does middleware execution order matter?
+✔ When should you use custom middleware instead of an action filter?
+✔ Why shouldn't controllers contain business logic?
+🗄️ Entity Framework Core
+✔ What actually happens when you call SaveChanges()?
+✔ Why does AsNoTracking() improve performance?
+✔ What causes the N+1 Query Problem?
+✔ When would you use projections instead of Include()?
+💾 SQL
+✔ Why can an index make writes slower?
+✔ How would you identify the bottleneck in a slow query?
+✔ What is a covering index?
+✔ Why is pagination important for performance?
+⚡ Performance
+✔ Why does an API become slow only in production?
+✔ How would you identify thread pool starvation?
+✔ When would you use Redis over in-memory caching?
+✔ What metrics would you check before optimizing?
+🔒 Security
+✔ How would you invalidate a JWT before it expires?
+✔ Why shouldn't sensitive information be stored in JWT claims?
+✔ How would you protect a public API from abuse?
+✔ Why are refresh tokens needed?
+📌 Quick Self-Check
+If you answered:
+🟢 18–24 → Strong foundation.
+🟡 12–17 → Good, but revise the gaps.
+🟠 Below 12 → Spend time strengthening the fundamentals before chasing advanced topics.
+One thing I've learned is this:
+Interviews rarely expose what you never learned.
+They expose what you thought you remembered.
+That's exactly why I created the Smart Mentor .NET Interview Prep Kit—to make revision structured instead of scattered.
+It includes:
+✔ .NET Fundamentals
+✔ Quick Revision Chapters
+✔ SQL Revision
+✔ Interview-Focused Topics
