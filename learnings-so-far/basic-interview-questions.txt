@@ -1,50 +1,89 @@
-NET Interview Revision
-Let's play a quick game.
-Can you answer these without opening Google?
-If yes, you're probably interview-ready.
-If not, you know what to revise tonight.
-👇
+# .NET Interview Flashcards
+
 🧠 C#
-✔ Why are strings immutable?
-✔ When would you use record instead of class?
-✔ Why is Span<T> faster in some scenarios?
-✔ What problem does ValueTask solve?
+Q: Why are strings immutable?
+A: Thread safety, memory efficiency, interning.
+
+Q: When use record instead of class?
+A: For immutable, value‑based models.
+
+Q: Why is Span<T> faster?
+A: Avoids allocations, slices memory directly.
+
+Q: What problem does ValueTask solve?
+A: Reduces allocations when async completes synchronously.
+
+---
+
 🌐 ASP.NET Core
-✔ Why is DbContext registered as Scoped?
-✔ Why does middleware execution order matter?
-✔ When should you use custom middleware instead of an action filter?
-✔ Why shouldn't controllers contain business logic?
-🗄️ Entity Framework Core
-✔ What actually happens when you call SaveChanges()?
-✔ Why does AsNoTracking() improve performance?
-✔ What causes the N+1 Query Problem?
-✔ When would you use projections instead of Include()?
+Q: Why is DbContext scoped?
+A: One unit of work per request.
+
+Q: Why does middleware order matter?
+A: Each wraps the next; wrong order breaks pipeline.
+
+Q: When use custom middleware vs filter?
+A: Middleware for cross‑cutting, filters for MVC.
+
+Q: Why keep controllers thin?
+A: Separation of concerns, no business logic.
+
+---
+
+🗄️ EF Core
+Q: What happens on SaveChanges()?
+A: Translates tracked changes into SQL + transaction.
+
+Q: Why AsNoTracking()?
+A: Faster reads, no change tracking.
+
+Q: Cause of N+1 problem?
+A: Lazy loading multiple queries.
+
+Q: Projections vs Include()?
+A: Projections fetch only needed fields.
+
+---
+
 💾 SQL
-✔ Why can an index make writes slower?
-✔ How would you identify the bottleneck in a slow query?
-✔ What is a covering index?
-✔ Why is pagination important for performance?
+Q: Why index slows writes?
+A: Extra work updating index.
+
+Q: Identify slow query bottleneck?
+A: Execution plan, missing indexes, scans.
+
+Q: What is covering index?
+A: Index with all needed columns.
+
+Q: Why pagination matters?
+A: Avoids huge result sets, faster response.
+
+---
+
 ⚡ Performance
-✔ Why does an API become slow only in production?
-✔ How would you identify thread pool starvation?
-✔ When would you use Redis over in-memory caching?
-✔ What metrics would you check before optimizing?
+Q: Why API slow in prod?
+A: Real load, DB contention, latency.
+
+Q: Identify thread pool starvation?
+A: Queued tasks, long waits, metrics.
+
+Q: Redis vs in‑memory cache?
+A: Redis for distributed, in‑memory per instance.
+
+Q: Metrics before optimizing?
+A: CPU, memory, DB queries, latency.
+
+---
+
 🔒 Security
-✔ How would you invalidate a JWT before it expires?
-✔ Why shouldn't sensitive information be stored in JWT claims?
-✔ How would you protect a public API from abuse?
-✔ Why are refresh tokens needed?
-📌 Quick Self-Check
-If you answered:
-🟢 18–24 → Strong foundation.
-🟡 12–17 → Good, but revise the gaps.
-🟠 Below 12 → Spend time strengthening the fundamentals before chasing advanced topics.
-One thing I've learned is this:
-Interviews rarely expose what you never learned.
-They expose what you thought you remembered.
-That's exactly why I created the Smart Mentor .NET Interview Prep Kit—to make revision structured instead of scattered.
-It includes:
-✔ .NET Fundamentals
-✔ Quick Revision Chapters
-✔ SQL Revision
-✔ Interview-Focused Topics
+Q: Invalidate JWT early?
+A: Blacklist or rotate signing key.
+
+Q: Why not store sensitive info in JWT?
+A: Tokens are client‑visible.
+
+Q: Protect public API?
+A: Rate limiting, API keys, throttling.
+
+Q: Why refresh tokens?
+A: Secure long‑lived sessions.
