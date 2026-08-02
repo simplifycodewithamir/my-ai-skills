@@ -23,6 +23,7 @@ description: Use this skill whenever writing or reviewing production C#/.NET cod
 - Postgres is the default store; Redis for caching — every key gets a documented prefix and TTL.
 - Parameterize all SQL. Never string-concatenate a query.
 - Session-management framework and NoSQL-vs-relational choice: propose an option **per project** with a reason, don't default silently.
+- implement throtlling, rate-limiting, and circuit-breaking for external calls using the .NET Resilience package.
 
 ## Don't
 - Don't scaffold `[ApiController]` MVC controllers for new code.
