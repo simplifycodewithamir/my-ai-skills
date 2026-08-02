@@ -15,6 +15,44 @@ description: Use this skill whenever setting up or reviewing CI/CD, GitHub Actio
 - **Azure/AKS** is the deployment target unless stated otherwise.
 - **Secrets** (DB passwords, connection strings, API keys) live in **Azure Key Vault only**, pulled into the cluster via the Azure Key Vault Provider for Secrets Store CSI Driver (or equivalent), referenced from the pod spec.
 
+## GitHub Actions: .NET build & test job
+Base job for the "restore → build → run tests" portion of the per-app-repo CI workflow (line above). Static/security scan and Docker image build are separate additive steps in the same workflow, not replacements for this.
+
+```yaml
+name: Build and Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore <path-to-solution>.slnx
+
+      - name: Build
+        run: dotnet build <path-to-solution>.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test <path-to-solution>.slnx --configuration Release --no-build --verbosity normal
+```
+
+- Pin `dotnet-version` to the exact SDK the repo targets (check `global.json` / `<TargetFramework>`), not a floating major version.
+- `--no-restore` on build and `--no-build` on test avoid redundant work now that each step is explicit — keep that chain intact when adding scan/Docker steps after `Test`.
+- Swap in the repo's actual `.sln`/`.slnx` path; don't hardcode a project name from another repo.
+
 ## Don't
 - Don't defer CI/CD to "later" on a new repo — scaffold it in the first PR.
 - Don't push directly to prod images/tags — always promote a dev image that already passed CI.
