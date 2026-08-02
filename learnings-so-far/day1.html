@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Field Notes — Building an AI-Assisted .NET Workflow</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --paper: #F2F4EE;
+    --paper-alt: #EAEEE4;
+    --ink: #1F2A22;
+    --ink-soft: #4A564A;
+    --grid: #C9D2C0;
+    --do: #2F5D40;
+    --do-bg: #E4EEE3;
+    --dont: #9A3E24;
+    --dont-bg: #F4E4DC;
+    --code: #24344F;
+    --code-bg: #E7EAF1;
+    --tape: #D8CFA6;
+    --rule-w: 72rem;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      linear-gradient(var(--paper), var(--paper)) fixed,
+      repeating-linear-gradient(0deg, transparent, transparent 27px, var(--grid) 28px) fixed,
+      repeating-linear-gradient(90deg, transparent, transparent 27px, var(--grid) 28px) fixed;
+    background-blend-mode: normal;
+    opacity: 1;
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(75,90,70,0.08) 28px),
+                       repeating-linear-gradient(90deg, transparent, transparent 27px, rgba(75,90,70,0.08) 28px);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .spine{
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 46px;
+    background: linear-gradient(180deg, #DCE3D3, #CBD6BE);
+    border-right: 1px solid var(--grid);
+    z-index: 5;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding-top: 40px;
+    gap: 26px;
+  }
+  .spine .hole{
+    width: 14px; height:14px; border-radius:50%;
+    background: var(--paper);
+    box-shadow: inset 0 2px 3px rgba(0,0,0,0.25);
+  }
+  @media (max-width: 860px){ .spine{display:none;} }
+
+  main{
+    position:relative;
+    z-index:1;
+    max-width: var(--rule-w);
+    margin: 0 auto;
+    padding: 5rem 3rem 6rem 5.5rem;
+  }
+  @media (max-width: 860px){ main{ padding: 3rem 1.25rem 4rem; } }
+
+  /* ---------- Hero ---------- */
+  .hero{
+    padding-bottom: 3.5rem;
+    margin-bottom: 3.5rem;
+    border-bottom: 2px solid var(--ink);
+    position: relative;
+  }
+  .kicker{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    display:flex;
+    align-items:center;
+    gap: 0.6rem;
+  }
+  .kicker::before{
+    content:"";
+    width: 8px; height: 8px;
+    background: var(--do);
+    border-radius: 50%;
+    display:inline-block;
+  }
+  h1{
+    font-family:'Newsreader', serif;
+    font-weight: 500;
+    font-size: clamp(2.4rem, 5vw, 4rem);
+    line-height: 1.05;
+    margin: 0.6rem 0 1rem;
+    max-width: 20ch;
+  }
+  h1 em{ font-style: italic; color: var(--do); }
+  .hero-sub{
+    font-size: 1.15rem;
+    color: var(--ink-soft);
+    max-width: 46ch;
+    margin: 0 0 2rem;
+  }
+  .hero-meta{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    display:flex;
+    gap: 2rem;
+    flex-wrap:wrap;
+  }
+  .hero-meta strong{ color: var(--ink); }
+
+  /* ---------- Toolchain diagram (signature element) ---------- */
+  .toolchain{
+    margin: 2.5rem 0 0;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:stretch;
+    gap: 0;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+  }
+  .tc-node{
+    background: var(--paper-alt);
+    border: 1.5px solid var(--ink);
+    padding: 0.9rem 1.1rem;
+    min-width: 128px;
+    position: relative;
+  }
+  .tc-node .tc-title{ font-weight:600; display:block; margin-bottom:0.2rem; }
+  .tc-node .tc-sub{ color: var(--ink-soft); font-size: 0.74rem; }
+  .tc-arrow{
+    display:flex; align-items:center; justify-content:center;
+    width: 34px; color: var(--ink-soft); font-size:1.1rem;
+  }
+  .tc-node.win{ background: #EFE8DA; }
+  .tc-node.wsl{ background: #DFEADF; }
+  @media (max-width: 700px){
+    .toolchain{ flex-direction:column; }
+    .tc-arrow{ transform: rotate(90deg); width:auto; padding:0.2rem 0; }
+  }
+
+  /* ---------- Sections ---------- */
+  section{ margin-bottom: 4.5rem; scroll-margin-top: 2rem; }
+  .sec-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 0.4rem;
+  }
+  h2{
+    font-family:'Newsreader', serif;
+    font-weight: 500;
+    font-size: clamp(1.6rem, 3vw, 2.1rem);
+    margin: 0 0 1.4rem;
+    border-bottom: 1px solid var(--grid);
+    padding-bottom: 0.8rem;
+  }
+  h3{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin: 0 0 0.5rem;
+  }
+  p{ margin: 0 0 1rem; max-width: 68ch; }
+
+  /* ---------- Comparison table (env decision) ---------- */
+  .compare{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--ink);
+    border: 1px solid var(--ink);
+    margin: 1.5rem 0;
+  }
+  .compare > div{ background: var(--paper); padding: 1.2rem 1.4rem; }
+  .compare .head{
+    background: var(--ink);
+    color: var(--paper);
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+  }
+  .compare ul{ margin:0; padding-left: 1.1rem; font-size: 0.94rem; }
+  .compare li{ margin-bottom: 0.5rem; }
+  @media (max-width: 700px){ .compare{ grid-template-columns: 1fr; } }
+
+  /* ---------- Sticky notes (do/don't callouts) ---------- */
+  .notes-row{ display:flex; gap: 1.2rem; flex-wrap:wrap; margin: 1.6rem 0; }
+  .sticky{
+    flex: 1 1 260px;
+    padding: 1.1rem 1.2rem 1.3rem;
+    font-size: 0.93rem;
+    position: relative;
+    box-shadow: 3px 4px 0 rgba(31,42,34,0.08);
+  }
+  .sticky.do{ background: var(--do-bg); border-left: 4px solid var(--do); transform: rotate(-0.6deg); }
+  .sticky.dont{ background: var(--dont-bg); border-left: 4px solid var(--dont); transform: rotate(0.5deg); }
+  .sticky .tag{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight:600;
+    display:block;
+    margin-bottom: 0.4rem;
+  }
+  .sticky.do .tag{ color: var(--do); }
+  .sticky.dont .tag{ color: var(--dont); }
+  .sticky ul{ margin: 0; padding-left: 1.1rem; }
+  .sticky li{ margin-bottom: 0.35rem; }
+
+  /* ---------- Terminal / code blocks ---------- */
+  .term{
+    background: var(--code-bg);
+    border: 1px solid #C3CADC;
+    border-radius: 6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--code);
+    padding: 1rem 1.2rem;
+    margin: 1rem 0 1.6rem;
+    overflow-x:auto;
+  }
+  .term .prompt{ color: #7A8AAE; margin-right:0.5rem; }
+  .term .line{ white-space: pre; }
+  .term .comment{ color: #7A8AAE; }
+
+  /* ---------- Skill cards ---------- */
+  .skills-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.1rem;
+    margin: 1.6rem 0;
+  }
+  .skill-card{
+    border: 1.5px solid var(--ink);
+    background: var(--paper-alt);
+    padding: 1.1rem 1.2rem;
+  }
+  .skill-card .name{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:600;
+    font-size: 0.9rem;
+    display:block;
+    margin-bottom: 0.5rem;
+  }
+  .skill-card .desc{ font-size: 0.85rem; color: var(--ink-soft); margin:0; }
+  .skill-card.hub{ background: var(--do-bg); border-color: var(--do); }
+
+  /* ---------- Timeline ---------- */
+  .timeline{ position:relative; padding-left: 1.6rem; margin: 1.8rem 0; }
+  .timeline::before{
+    content:""; position:absolute; left: 5px; top: 6px; bottom: 6px;
+    width: 2px; background: var(--grid);
+  }
+  .t-item{ position:relative; margin-bottom: 1.6rem; }
+  .t-item::before{
+    content:""; position:absolute; left: -1.6rem; top: 4px;
+    width: 12px; height:12px; border-radius:50%;
+    background: var(--paper); border: 2.5px solid var(--do);
+  }
+  .t-item .t-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    display:block; margin-bottom: 0.2rem;
+  }
+  .t-item.pending::before{ border-color: var(--ink-soft); background: var(--paper-alt); }
+  .t-item.pending .t-label{ opacity: 0.7; }
+
+  /* ---------- Cheat sheet ---------- */
+  .cheat-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.4rem;
+    margin-top: 1.4rem;
+  }
+  .cheat-block h3{ margin-bottom:0.6rem; }
+
+  footer{
+    border-top: 2px solid var(--ink);
+    padding-top: 2rem;
+    margin-top: 3rem;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    display:flex;
+    justify-content: space-between;
+    flex-wrap:wrap;
+    gap: 1rem;
+  }
+
+  .fade-in{ opacity:0; transform: translateY(14px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .fade-in.visible{ opacity:1; transform: translateY(0); }
+
+  @media (prefers-reduced-motion: reduce){
+    .fade-in{ opacity:1; transform:none; transition:none; }
+    html{ scroll-behavior:auto; }
+  }
+
+  a{ color: var(--code); }
+  code{ font-family:'IBM Plex Mono', monospace; background: var(--code-bg); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<div class="spine" aria-hidden="true">
+  <div class="hole"></div><div class="hole"></div><div class="hole"></div>
+  <div class="hole"></div><div class="hole"></div><div class="hole"></div>
+  <div class="hole"></div><div class="hole"></div><div class="hole"></div>
+  <div class="hole"></div><div class="hole"></div><div class="hole"></div>
+</div>
+
+<main>
+
+  <section class="hero">
+    <span class="kicker">Field notes — self study</span>
+    <h1>Setting up an <em>AI-assisted</em> .NET workflow, from scratch</h1>
+    <p class="hero-sub">A working notebook on moving development from Windows + Visual Studio into WSL Ubuntu, and wiring Claude Chat, Cowork, and Claude Code together with reusable Skills instead of one flat instructions file.</p>
+    <div class="hero-meta">
+      <span><strong>Stack:</strong> .NET 10 / C# / React</span>
+      <span><strong>First project:</strong> health-tracker</span>
+      <span><strong>Environment:</strong> WSL Ubuntu + VS Code</span>
+    </div>
+
+    <div class="toolchain fade-in">
+      <div class="tc-node win"><span class="tc-title">Windows</span><span class="tc-sub">Claude Desktop</span></div>
+      <div class="tc-arrow">→</div>
+      <div class="tc-node"><span class="tc-title">Chat</span><span class="tc-sub">planning, this notebook</span></div>
+      <div class="tc-arrow">+</div>
+      <div class="tc-node"><span class="tc-title">Cowork</span><span class="tc-sub">email, Excel, Jira</span></div>
+      <div class="tc-arrow">⋮</div>
+      <div class="tc-node wsl"><span class="tc-title">WSL Ubuntu</span><span class="tc-sub">VS Code Remote-WSL</span></div>
+      <div class="tc-arrow">→</div>
+      <div class="tc-node"><span class="tc-title">Claude Code</span><span class="tc-sub">the actual repos</span></div>
+    </div>
+  </section>
+
+  <!-- ============ WHY WSL ============ -->
+  <section id="wsl" class="fade-in">
+    <div class="sec-label">01 · Environment</div>
+    <h2>Why WSL instead of Windows + Visual Studio</h2>
+    <p>Previously: build in Visual Studio, launch locally, test with Postman — never actually running as the container that ships to production. Moving into WSL Ubuntu closes that gap, because the dev loop now matches the deploy target.</p>
+
+    <div class="compare">
+      <div class="head">Old — Windows / Visual Studio</div>
+      <div class="head">New — WSL Ubuntu / VS Code</div>
+      <div>
+        <ul>
+          <li>Run via <code>dotnet run</code> / IIS Express, not a container</li>
+          <li>Never touching the Linux toolchain the pipeline actually uses</li>
+          <li>Manual Postman checks, no local Docker parity</li>
+        </ul>
+      </div>
+      <div>
+        <ul>
+          <li>Same Linux filesystem the CI/CD pipeline builds from</li>
+          <li>Can run the app as an actual Docker image locally — same shape as prod</li>
+          <li>VS Code attaches via <strong>Remote-WSL</strong> — one real shell, no cross-filesystem lag</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="notes-row">
+      <div class="sticky dont">
+        <span class="tag">Gotcha</span>
+        <ul>
+          <li>Opening a WSL folder through <code>\\wsl$\...</code> from Windows Explorer connects over a network share — slower, and can cause file-permission / line-ending issues.</li>
+          <li><code>sudo mkdir</code> for your own folders leaves them <code>root</code>-owned — causes permission friction with git and VS Code later.</li>
+        </ul>
+      </div>
+      <div class="sticky do">
+        <span class="tag">Do instead</span>
+        <ul>
+          <li>From inside a WSL terminal: <code>cd</code> into the repo, then <code>code .</code> — opens VS Code already attached in Remote-WSL mode.</li>
+          <li>Fix accidental <code>root</code> ownership with <code>sudo chown -R $USER:$USER ~/.claude</code>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SKILLS VS CLAUDE.MD ============ -->
+  <section id="skills-vs-claudemd" class="fade-in">
+    <div class="sec-label">02 · Two different memory mechanisms</div>
+    <h2>CLAUDE.md vs. Skills — not the same tool</h2>
+    <p>CLAUDE.md is <em>location-triggered</em>: whatever file sits at that level loads in full, always, whether relevant or not. A Skill is <em>task-triggered</em>: only its name + one-line description sit in context by default; the full content loads only when the task actually matches.</p>
+
+    <div class="compare">
+      <div class="head">CLAUDE.md</div>
+      <div class="head">Skills</div>
+      <div>
+        <ul>
+          <li>Loads in full, based on where you are (global, repo, subfolder)</li>
+          <li>One flat file — simple, but grows unwieldy</li>
+          <li>Good for: working-style rules, repo-specific facts</li>
+        </ul>
+      </div>
+      <div>
+        <ul>
+          <li>Loads based on <em>what task</em> you're doing</li>
+          <li>Modular — one concern per skill, can bundle scripts/templates</li>
+          <li>Good for: reusable conventions across every repo</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>The three-level split in use here</h3>
+    <div class="skills-grid">
+      <div class="skill-card">
+        <span class="name">~/.claude/CLAUDE.md</span>
+        <p class="desc">Global working style: run ahead without asking, stop only for destructive/ambiguous/costly changes, no flattery, concise, code over prose.</p>
+      </div>
+      <div class="skill-card">
+        <span class="name">&lt;repo&gt;/CLAUDE.md</span>
+        <p class="desc">Repo-specific facts only — service name, ports, DB, deploy namespace. Points to the skills for conventions, never restates them.</p>
+      </div>
+      <div class="skill-card hub">
+        <span class="name">Skills (6, symlinked from a repo)</span>
+        <p class="desc">The actual reusable conventions — production code, testing, CI/CD, frontend, git — single source of truth, edited once.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ THE SIX SKILLS ============ -->
+  <section id="the-skills" class="fade-in">
+    <div class="sec-label">03 · What got built</div>
+    <h2>Six skills, one router</h2>
+    <p>Each skill states what to do and — just as important — what not to do, so conventions like "exceptions, not <code>Result&lt;T&gt;</code>" or "Testcontainers, not mocks" get enforced rather than just documented.</p>
+
+    <div class="skills-grid">
+      <div class="skill-card hub">
+        <span class="name">dotnet-stack</span>
+        <p class="desc">Aggregate router. Points to the right sub-skill(s) instead of dumping everything into context at once.</p>
+      </div>
+      <div class="skill-card">
+        <span class="name">dotnet-production-code</span>
+        <p class="desc">Minimal APIs + endpoint groups, exceptions → ProblemDetails, TimeProvider, Serilog + OTel, resilience retries.</p>
+      </div>
+      <div class="skill-card">
+        <span class="name">dotnet-testing</span>
+        <p class="desc">xUnit, test-first, Testcontainers over mocks, WebApplicationFactory over TestServer.</p>
+      </div>
+      <div class="skill-card">
+        <span class="name">cicd-pipeline</span>
+        <p class="desc">GitHub Actions stages, self-hosted Artifactory promotion flow, separate k8s-deploy repo, AKS + Key Vault.</p>
+      </div>
+      <div class="skill-card">
+        <span class="name">react-frontend</span>
+        <p class="desc">TypeScript, functional components only, query-library server state, accessibility floor, Tailwind.</p>
+      </div>
+      <div class="skill-card">
+        <span class="name">git-workflow</span>
+        <p class="desc">Conventional Commits, no force-push to shared branches, no AI co-author.</p>
+      </div>
+    </div>
+
+    <h3>Wiring them in — the reliable pattern</h3>
+    <p>Symlinking the whole <code>~/.claude/skills</code> folder has open, unresolved discovery bugs. Symlinking each <em>skill folder</em> inside a real parent directory is the pattern that actually works:</p>
+    <div class="term">
+<span class="line"><span class="prompt">$</span> mkdir -p ~/.claude/skills</span>
+<span class="line"><span class="prompt">$</span> ln -s ~/repos/my-ai-skills/dotnet-stack ~/.claude/skills/dotnet-stack</span>
+<span class="line"><span class="prompt">$</span> ln -s ~/repos/my-ai-skills/dotnet-production-code ~/.claude/skills/dotnet-production-code</span>
+<span class="line"><span class="comment"># ...repeat per skill, then verify:</span></span>
+<span class="line"><span class="prompt">$</span> claude</span>
+<span class="line">  &gt; /skills   <span class="comment"># all six should show "On"</span></span>
+    </div>
+
+    <div class="notes-row">
+      <div class="sticky do">
+        <span class="tag">Do</span>
+        <ul>
+          <li>Repo is the source of truth — edit there, symlink reflects it instantly, no restart needed.</li>
+          <li>Skill body edits are picked up live by a running Claude Code session.</li>
+        </ul>
+      </div>
+      <div class="sticky dont">
+        <span class="tag">Don't</span>
+        <ul>
+          <li>Don't symlink <code>~/.claude/skills</code> itself — known regression, skills silently fail to be discovered.</li>
+          <li>Don't duplicate a convention in both a project CLAUDE.md and a skill — it will drift.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ VERIFYING A DIFF ============ -->
+  <section id="diffs" class="fade-in">
+    <div class="sec-label">04 · Reviewing what Claude Code did</div>
+    <h2>No Beyond Compare needed — it's built in</h2>
+    <p>VS Code's Source Control panel gives the same side-by-side diff as Beyond Compare, GitHub Desktop, or Visual Studio's diff tool — and it works natively over the Remote-WSL connection.</p>
+    <div class="term">
+<span class="line"><span class="prompt">$</span> git status   <span class="comment"># confirm what changed</span></span>
+<span class="line"><span class="prompt">$</span> git diff     <span class="comment"># quick inline read in the terminal</span></span>
+<span class="line"><span class="comment"># — or —</span></span>
+<span class="line">Ctrl+Shift+G  <span class="comment">→ Source Control panel → click a file for a visual diff</span></span>
+    </div>
+  </section>
+
+  <!-- ============ HEALTH-TRACKER TIMELINE ============ -->
+  <section id="health-tracker" class="fade-in">
+    <div class="sec-label">05 · Applying it — health-tracker</div>
+    <h2>First AI-generated repo, as it happened</h2>
+    <div class="timeline">
+      <div class="t-item">
+        <span class="t-label">Milestone 1</span>
+        Initial code pushed — repo builds, but doesn't run.
+      </div>
+      <div class="t-item">
+        <span class="t-label">Milestone 2</span>
+        First working endpoint: <code>/health</code>, end to end through Claude Code + the symlinked skills.
+      </div>
+      <div class="t-item pending">
+        <span class="t-label">Next — decided</span>
+        Keep the Aspire AppHost for local dev: it doesn't replace the production Dockerfile, it orchestrates Postgres/Redis locally and its dashboard visualizes the Serilog + OpenTelemetry data live.
+      </div>
+      <div class="t-item pending">
+        <span class="t-label">Next — roadmap</span>
+        Scalar for OpenAPI · Serilog + OpenTelemetry · .NET 10 built-in resilience · Dockerize · GitHub Actions CI on every PR · publish image to Artifactory on merge.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section id="cheatsheet" class="fade-in">
+    <div class="sec-label">06 · Reference</div>
+    <h2>Cheat sheet</h2>
+    <div class="cheat-grid">
+      <div class="cheat-block">
+        <h3>Everyday commands</h3>
+        <div class="term">
+<span class="line"><span class="prompt">$</span> code .              <span class="comment"># open current WSL folder in VS Code</span></span>
+<span class="line"><span class="prompt">$</span> claude               <span class="comment"># start a Claude Code session here</span></span>
+<span class="line"><span class="prompt">$</span> mkdir -p ~/repos     <span class="comment"># one folder for every cloned repo</span></span>
+<span class="line"><span class="prompt">$</span> rm -rf foldername    <span class="comment"># delete — no undo, check first</span></span>
+<span class="line"><span class="prompt">$</span> unlink linkname      <span class="comment"># remove a symlink without touching its target</span></span>
+        </div>
+      </div>
+      <div class="cheat-block">
+        <h3>Where things live</h3>
+        <div class="term">
+<span class="line">~/.claude/CLAUDE.md          <span class="comment"># global working style</span></span>
+<span class="line">&lt;repo&gt;/CLAUDE.md             <span class="comment"># per-project facts</span></span>
+<span class="line">~/.claude/skills/&lt;name&gt;     <span class="comment"># symlink → repo skill folder</span></span>
+<span class="line">~/repos/my-ai-skills/        <span class="comment"># source of truth, in git</span></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Field notes · living document — update as the workflow evolves</span>
+    <span>.NET 10 · React · WSL Ubuntu · Claude Code</span>
+  </footer>
+
+</main>
+
+<script>
+  const items = document.querySelectorAll('.fade-in');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  items.forEach(el => io.observe(el));
+</script>
+
+</body>
+</html>
